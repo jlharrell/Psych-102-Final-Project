@@ -1,0 +1,69 @@
+---
+title: "Final Project Code"
+format: html
+---
+
+```{python}
+import numpy as np
+import matplotlib.pyplot as plt
+from load_trial_data_from_pid import load_trial_data_for_pid
+
+participants = ["IR97", "IR99" "BJH008", "OS57", "BJH010", "BJH016", 
+               "SLCH002", "BJH017", "BJH018", "OS63", "SLCH006", "BJH021"] 
+OUTCOMES = ['nmb', 'nma', 'hit', 'fm']
+
+```
+
+```{python}
+def load_all_participants(band, region):
+    big_dict = { outcome: {} for outcome in OUTCOMES }
+    for pid in participants:
+        data = load_trial_data_for_pid(pid, band, region)
+        for outcome, elec_dict in data.items():
+            for elec, arr in elec_dict.items():
+                new_key = f"{pid}_{elec}"
+                mean_arr = arr[:, 2500:5001].mean(axis = 0)
+                big_dict[outcome][new_key] = mean_arr
+    return big_dict
+
+```
+
+```{python}
+def averaging_electrodes(band, region):
+    averaged_outcomes = { outcome: {} for outcome in OUTCOMES} # keys are outcomes, values are an array with shape (n_tps,)
+    big_dict = load_all_participants(band, region)
+
+    for outcome, elec_dict in big_dict.items():
+        averaged_trials = [] # list of arrays (shape = n_tps) for each electrode
+        for array in elec_dict.values():
+            averaged_trials.append(array)
+        averaged_trials = np.stack(averaged_trials, axis = 0) # convert list to array 
+        print(averaged_trials.shape) # check, should be 2D with shape as (# of electrodes, # tps)
+        averaged_outcomes[outcome] = averaged_trials.mean(axis=0) # average across electrodes
+
+    return averaged_outcomes
+
+```
+        
+
+```{python}
+def plotting(band, region):
+    colors = ['yellow', 'purple', 'red', 'green']
+    condition_data = averaging_electrodes(band, region)
+    n_times = len(next(iter(condition_data.values())))
+    time = np.linspace(-3, 2, n_times)
+    plt.figure(figsize=(10, 5))
+
+    for (outcome, values), color in zip(condition_data.items(), colors):
+        plt.plot(time, values, label=outcome, color=color, linewidth=2)
+
+    plt.axvline(0, color='black', linestyle='--', linewidth=1)
+    plt.xlabel("Time (s)")
+    plt.title("HFA in amygdala per outcome")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig("/home/knight/jharrell/scripts/hfa_outcome_amyg.png")
+
+```
+
+
